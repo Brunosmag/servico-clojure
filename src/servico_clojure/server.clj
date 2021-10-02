@@ -21,11 +21,17 @@
 
 (defn consultar-tarefas [request]
   (let [store (:store request)]
-    (println store)
     {:status 200 :body @store}))
+
 
 (defn assoc-store [context]
   (update context :request assoc :store database/store))
+
+(defn delete-tarefa [request]
+  (let [store (:store request)
+        id (java.util.UUID/fromString (get-in request [:path-params :id]))]
+    (swap! store dissoc id)
+    {:status 200 }))
 
 (def db-interceptor
   {:name :db-interceptor
@@ -34,7 +40,8 @@
 (def routes (route/expand-routes
               #{["/hello" :get funcao-hello :route-name :hello-world]
                 ["/tarefa" :post [db-interceptor criar-tarefa] :route-name :criar-tarefa]
-                ["/consultar-tarefas" :get [db-interceptor consultar-tarefas] :route-name :consultar-tarefas]}))
+                ["/consultar-tarefas" :get [db-interceptor consultar-tarefas] :route-name :consultar-tarefas]
+                ["/tarefa/:id" :delete [db-interceptor delete-tarefa] :route-name :delete-tarefa]}))
 
 (def service-map {::http/routes routes
                   ::http/port   9999
@@ -59,9 +66,10 @@
   [verb url]
   (test/response-for (::http/service-fn @server) verb url))
 
-(test-request :get "/hello")
-(test-request :get "/hello?name=Bruno")
+;(test-request :get "/hello")
+;(test-request :get "/hello?name=Bruno")
 (test-request :post "/tarefa?nome=Ler&status=Pending")
 (test-request :get "/consultar-tarefas")
+(test-request :delete "/tarefa/9426127e-cf0e-472e-b003-19190e7a2c69")
 
 (println "Starting server...")
